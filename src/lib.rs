@@ -8,6 +8,41 @@ pub const S_PIECE_COLOR: Color = Color::GREEN;
 pub const T_PIECE_COLOR: Color = Color::PURPLE;
 pub const Z_PIECE_COLOR: Color = Color::RED;
 
+/// The entire board. Including the already placed piecec, the active piece and the held piece
+pub struct Board {
+    active_piece: TetrisPiece,
+    held_piece  : Option<Tetrimino>,
+    bag         : Bag,
+    grid        : [Option<Color>; 10*20],
+}
+
+impl Board {
+    /// Pulls the next piece from the bag and sets it as the active piece
+    pub fn next_piece(&mut self) {
+        let next = TetrisPiece { 
+            tetrimino: self.bag.next().unwrap(), 
+            rotation: Rotation::None 
+        };
+
+        self.active_piece = next;
+    }
+
+    /// Hold the active piece and swaps with the current held piece
+    pub fn hold_piece(&mut self) {
+        let swap = match self.held_piece {
+            Some(t) => t,
+            None    => self.bag.next().unwrap(),
+        };
+
+        self.held_piece = Some(self.active_piece.tetrimino);
+
+        self.active_piece = TetrisPiece { 
+            tetrimino: swap, 
+            rotation: Rotation::None 
+        }
+    }
+}
+
 /// Represents a tetris piece
 #[derive(Debug, Clone)]
 pub struct TetrisPiece {
@@ -336,5 +371,58 @@ impl TryFrom<usize> for Rotation {
             3 => Ok(Self::TwoSeventy),
             _ => Err(()),
         }
+    }
+}
+
+/// What which generates the next pieces
+struct Bag {
+    i       : usize,
+    pieces  : [Tetrimino; 7]
+}
+
+impl Bag {
+    fn new() -> Self {
+        let mut new = Self {
+            i: 0,
+            pieces: [Tetrimino::I; 7]
+        };
+
+        new.regenerate();
+        new
+    }
+
+    /// Regenerates the bag
+    fn regenerate(&mut self) {
+        use rand::random_range;
+        self.i = 0;
+
+        let mut new_bag = vec![
+            Tetrimino::I,
+            Tetrimino::J,
+            Tetrimino::L,
+            Tetrimino::O,
+            Tetrimino::S,
+            Tetrimino::T,
+            Tetrimino::Z,
+        ];
+
+        for i in 0..self.pieces.len() {
+            let new_i = random_range(0..new_bag.len());
+            self.pieces[i] = new_bag.remove(new_i); 
+        }
+    }
+}
+
+impl Iterator for Bag {
+    type Item = Tetrimino;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i >= 7 {
+            self.regenerate();
+        }
+
+        let piece = self.pieces[self.i];
+        self.i += 1;
+        Some(piece)
     }
 }
